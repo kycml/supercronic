@@ -2,15 +2,17 @@ package cron
 
 import (
 	"fmt"
-	"github.com/aptible/supercronic/crontab"
-	"github.com/sirupsen/logrus"
-	"github.com/stretchr/testify/assert"
 	"io/ioutil"
 	"regexp"
 	"strings"
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/sirupsen/logrus"
+	"github.com/stretchr/testify/assert"
+
+	"github.com/aptible/supercronic/crontab"
 )
 
 var (
@@ -190,7 +192,9 @@ func TestStartJobExitsOnRequest(t *testing.T) {
 
 	var wg sync.WaitGroup
 
-	StartJob(&wg, &basicContext, &job, exitChan, logger)
+	overlapped := false
+
+	StartJob(&wg, &basicContext, &job, exitChan, logger, overlapped)
 
 	wg.Wait()
 }
@@ -211,7 +215,9 @@ func TestStartJobRunsJob(t *testing.T) {
 
 	logger, channel := newTestLogger()
 
-	StartJob(&wg, &basicContext, &job, exitChan, logger)
+	overlapped := false
+
+	StartJob(&wg, &basicContext, &job, exitChan, logger, overlapped)
 
 	select {
 	case entry := <-channel:

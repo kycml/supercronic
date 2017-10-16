@@ -30,6 +30,11 @@ function run_supercronic() {
   run_supercronic "${BATS_TEST_DIRNAME}/timeout.crontab" 5s | grep -iE "job took too long to run"
 }
 
+@test "it runs overlapped jobs" {
+  n="$(SUPERCRONIC_ARGS="-overlapping" run_supercronic "${BATS_TEST_DIRNAME}/timeout.crontab" 5s | grep -iE "starting" | wc -l)"
+  [[ "$n" -eq 5 ]]
+}
+
 @test "it supports debug logging " {
   SUPERCRONIC_ARGS="-debug" run_supercronic "${BATS_TEST_DIRNAME}/hello.crontab" | grep -iE "debug"
 }
