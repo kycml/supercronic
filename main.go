@@ -3,13 +3,15 @@ package main
 import (
 	"flag"
 	"fmt"
-	"github.com/aptible/supercronic/cron"
-	"github.com/aptible/supercronic/crontab"
-	"github.com/sirupsen/logrus"
 	"os"
 	"os/signal"
 	"sync"
 	"syscall"
+
+	"github.com/sirupsen/logrus"
+
+	"github.com/aptible/supercronic/cron"
+	"github.com/aptible/supercronic/crontab"
 )
 
 var Usage = func() {
@@ -20,6 +22,7 @@ var Usage = func() {
 func main() {
 	debug := flag.Bool("debug", false, "enable debug logging")
 	json := flag.Bool("json", false, "enable JSON logging")
+	overlapping := flag.Bool("overlapping", false, "enable tasks overlapping")
 	flag.Parse()
 
 	if *debug {
@@ -63,7 +66,7 @@ func main() {
 			"job.position": job.Position,
 		})
 
-		cron.StartJob(&wg, tab.Context, job, exitChan, cronLogger)
+		cron.StartJob(&wg, tab.Context, job, exitChan, cronLogger, *overlapping)
 	}
 
 	termChan := make(chan os.Signal, 1)

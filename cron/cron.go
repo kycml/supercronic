@@ -3,8 +3,6 @@ package cron
 import (
 	"bufio"
 	"fmt"
-	"github.com/aptible/supercronic/crontab"
-	"github.com/sirupsen/logrus"
 	"io"
 	"os"
 	"os/exec"
@@ -12,6 +10,10 @@ import (
 	"sync"
 	"syscall"
 	"time"
+
+	"github.com/sirupsen/logrus"
+
+	"github.com/aptible/supercronic/crontab"
 )
 
 var (
@@ -105,23 +107,24 @@ func runJob(context *crontab.Context, command string, jobLogger *logrus.Entry) e
 	return nil
 }
 
-func StartJob(wg *sync.WaitGroup, context *crontab.Context, job *crontab.Job, exitChan chan interface{}, cronLogger *logrus.Entry) {
+// StartJob starts the cron job.
+func StartJob(wg *sync.WaitGroup, context *crontab.Context, job *crontab.Job, exitChan chan interface{}, cronLogger *logrus.Entry, overlapping bool) {
 	wg.Add(1)
 
 	go func() {
 		defer wg.Done()
 
-		var cronIteration uint64 = 0
+		var cronIteration uint64
 		nextRun := time.Now()
 
-		// NOTE: this (intentionally) does not run multiple instances of the
-		// job concurrently
+		// NOTE: if overlapping is disabled (default), this does not run multiple
+		// instances of the job concurrently
 		for {
 			nextRun = job.Expression.Next(nextRun)
 			cronLogger.Debugf("job will run next at %v", nextRun)
 
 			delay := nextRun.Sub(time.Now())
-			if delay < 0 {
+			if delay < 0 && !overlapping {
 				cronLogger.Warningf("job took too long to run: it should have started %v ago", -delay)
 				nextRun = time.Now()
 				continue
@@ -135,16 +138,24 @@ func StartJob(wg *sync.WaitGroup, context *crontab.Context, job *crontab.Job, ex
 				// Proceed normally
 			}
 
-			jobLogger := cronLogger.WithFields(logrus.Fields{
-				"iteration": cronIteration,
-			})
+			run := func(iteration uint64) {
+				jobLogger := cronLogger.WithFields(logrus.Fields{
+					"iteration": iteration,
+				})
 
-			err := runJob(context, job.Command, jobLogger)
+				err := runJob(context, job.Command, jobLogger)
 
-			if err == nil {
-				jobLogger.Info("job succeeded")
+				if err == nil {
+					jobLogger.Info("job succeeded")
+				} else {
+					jobLogger.Error(err)
+				}
+			}
+
+			if overlapping {
+				go run(cronIteration)
 			} else {
-				jobLogger.Error(err)
+				run(cronIteration)
 			}
 
 			cronIteration++
