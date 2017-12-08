@@ -20,7 +20,7 @@ var (
 	READ_BUFFER_SIZE = 64 * 1024
 )
 
-func startReaderDrain(wg *sync.WaitGroup, readerLogger *logrus.Entry, reader io.ReadCloser) {
+func startReaderDrain(wg *sync.WaitGroup, readerLogger *logrus.Entry, writer io.Writer, reader io.ReadCloser) {
 	wg.Add(1)
 
 	go func() {
@@ -52,7 +52,8 @@ func startReaderDrain(wg *sync.WaitGroup, readerLogger *logrus.Entry, reader io.
 				break
 			}
 
-			readerLogger.Info(string(line))
+			// readerLogger.Info(string(line))
+			fmt.Fprintln(writer, string(line))
 
 			if isPrefix {
 				readerLogger.Warn("last line exceeded buffer size, continuing...")
@@ -93,10 +94,10 @@ func runJob(context *crontab.Context, command string, jobLogger *logrus.Entry) e
 	var wg sync.WaitGroup
 
 	stdoutLogger := jobLogger.WithFields(logrus.Fields{"channel": "stdout"})
-	startReaderDrain(&wg, stdoutLogger, stdout)
+	startReaderDrain(&wg, stdoutLogger, os.Stdout, stdout)
 
 	stderrLogger := jobLogger.WithFields(logrus.Fields{"channel": "stderr"})
-	startReaderDrain(&wg, stderrLogger, stderr)
+	startReaderDrain(&wg, stderrLogger, os.Stderr, stderr)
 
 	wg.Wait()
 

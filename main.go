@@ -28,6 +28,7 @@ func main() {
 	if *debug {
 		logrus.SetLevel(logrus.DebugLevel)
 	}
+	logrus.SetOutput(os.Stderr)
 
 	if *json {
 		logrus.SetFormatter(&logrus.JSONFormatter{})
